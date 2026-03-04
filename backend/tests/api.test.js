@@ -2,24 +2,20 @@ const request = require('supertest');
 const app = require('../server'); // Importamos tu servidor
 const jwt = require('jsonwebtoken');
 
-// 1. MOCKEAMOS LA BASE DE DATOS: Así no alteramos tus datos reales
 jest.mock('../config/db', () => ({
     query: jest.fn()
 }));
 const pool = require('../config/db');
 
-// 2. Generamos tokens falsos para probar las rutas protegidas sin hacer login cada vez
 const tokenUser = jwt.sign({ user: { id: 1, rol: 'user' } }, process.env.JWT_SECRET || 'secreto', { expiresIn: '1h' });
 const tokenAdmin = jwt.sign({ user: { id: 2, rol: 'admin' } }, process.env.JWT_SECRET || 'secreto', { expiresIn: '1h' });
 
 describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
 
-    // Limpiamos la memoria de las simulaciones antes de cada prueba
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    // --- PRUEBA 1: Login Fallido ---
     it('1. Debe rechazar el login con credenciales incorrectas (Login fallido)', async () => {
         pool.query.mockResolvedValue([[]]); // Simulamos que la BD no encontró el correo
 
@@ -31,17 +27,15 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.mensaje).toBe('Credenciales incorrectas');
     });
 
-    // --- PRUEBA 2: Validación Fallida ---
     it('2. Debe rechazar la creación de factura si no hay token (Validación fallida)', async () => {
         const res = await request(app)
             .post('/api/facturas')
-            .send({ rfcCliente: 'XAXX010101000' }); // Intentamos enviar sin Authorization
+            .send({ rfcCliente: 'XAXX010101000' }); 
 
         expect(res.statusCode).toBe(401);
         expect(res.body.mensaje).toMatch(/No hay token/i);
     });
 
-    // --- PRUEBA 3: Crear Registro ---
     it('3. Debe crear una factura exitosamente como Borrador (Crear registro)', async () => {
         pool.query.mockResolvedValue([{ insertId: 99 }]); // Simulamos inserción exitosa
 
@@ -60,7 +54,6 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.mensaje).toMatch(/Factura creada/i);
     });
 
-    // --- PRUEBA 4: Listar Registros ---
     it('4. Debe listar las facturas del sistema (Listar registros)', async () => {
         pool.query
             .mockResolvedValueOnce([[{ id: 1, rfcCliente: 'ABC' }]]) // Simula la lista de facturas
@@ -75,7 +68,6 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.datos.length).toBe(1);
     });
 
-    // --- PRUEBA 5: Paginación o Filtros ---
     it('5. Debe aplicar filtros y paginación en el listado (Paginación o filtros)', async () => {
         pool.query
             .mockResolvedValueOnce([[]])
@@ -90,7 +82,6 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.limite).toBe(5);
     });
 
-    // --- PRUEBA 6: Acceso Denegado por Rol ---
     it('6. Debe denegar a un usuario normal eliminar una factura (Acceso denegado por rol)', async () => {
         const res = await request(app)
             .delete('/api/facturas/1')
@@ -100,7 +91,6 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.mensaje).toMatch(/Solo administradores/i);
     });
 
-    // --- PRUEBA 7: Acceso Permitido por Rol ---
     it('7. Debe permitir a un administrador eliminar una factura (Acceso permitido por rol)', async () => {
         pool.query.mockResolvedValue([{ affectedRows: 1 }]); // Simulamos borrado en BD
 
@@ -112,7 +102,6 @@ describe('🧪 Pruebas Automatizadas de la API de Facturación', () => {
         expect(res.body.mensaje).toMatch(/eliminada/i);
     });
 
-    // --- PRUEBA 8: Login Exitoso ---
     it('8. Debe retornar un token al hacer login exitoso (Login exitoso)', async () => {
         // Interceptamos bcrypt para que valide la contraseña sin tener que hashearla de verdad
         const bcryptjs = require('bcryptjs');

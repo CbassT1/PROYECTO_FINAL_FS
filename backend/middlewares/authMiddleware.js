@@ -6,7 +6,7 @@ const verificarToken = (req, res, next) => {
 
     try {
         const cifrado = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = cifrado.user; // Guarda el ID y el ROL del usuario
+        req.user = cifrado.user;
         next();
     } catch (error) {
         res.status(401).json({ mensaje: 'Token no válido' });

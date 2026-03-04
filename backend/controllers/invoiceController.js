@@ -20,7 +20,7 @@ exports.obtenerFacturas = async (req, res, next) => {
         const limite = parseInt(req.query.limit) || 10;
         const pagina = parseInt(req.query.page) || 1;
         const offset = (pagina - 1) * limite;
-        const { estado, rfc } = req.query; // Capturamos los filtros
+        const { estado, rfc } = req.query; 
 
         let query = 'SELECT * FROM facturas WHERE 1=1';
         let countQuery = 'SELECT COUNT(*) as total FROM facturas WHERE 1=1';
@@ -35,7 +35,7 @@ exports.obtenerFacturas = async (req, res, next) => {
         if (rfc) {
             query += ' AND rfcCliente LIKE ?';
             countQuery += ' AND rfcCliente LIKE ?';
-            params.push(`%${rfc}%`); // Búsqueda parcial
+            params.push(`%${rfc}%`); 
         }
 
         query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
