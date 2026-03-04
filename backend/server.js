@@ -13,7 +13,7 @@ app.use('/api/facturas', require('./routes/invoice.routes'));
 
 // Middleware GLOBAL de errores
 app.use((err, req, res, next) => {
-    console.error("🔥 Error del servidor:", err.message);
+    console.error("Error del servidor:", err.message);
     res.status(500).json({ mensaje: 'Ocurrió un error interno', detalle: err.message });
 });
 
@@ -22,13 +22,13 @@ const PORT = process.env.PORT || 3000;
 // SOLO arranca el servidor si NO estamos haciendo pruebas
 if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, async () => {
-        console.log(`\n🚀 Servidor backend encendido en el puerto ${PORT}`);
+        console.log(`\nServidor backend encendido en el puerto ${PORT}`);
         try {
             const connection = await pool.getConnection();
-            console.log('✅ Conexión a MySQL exitosa!');
+            console.log('Conexión a MySQL exitosa!');
             connection.release();
         } catch (error) {
-            console.error('❌ Error de conexión:', error.message);
+            console.error('Error de conexión:', error.message);
         }
     });
 }

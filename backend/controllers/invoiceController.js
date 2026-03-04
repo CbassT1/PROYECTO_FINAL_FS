@@ -1,14 +1,18 @@
 const pool = require('../config/db');
 
 exports.crearFactura = async (req, res, next) => {
+    const { rfcCliente, monto, cantidad, tipo, descripcion } = req.body;
+    const user_id = req.user.id;
+
     try {
-        const { rfcCliente, monto, cantidad, tipo, descripcion } = req.body;
         const [result] = await pool.query(
-            'INSERT INTO facturas (user_id, rfcCliente, monto, cantidad, tipo, descripcion, estado) VALUES (?, ?, ?, ?, ?, ?, "Borrador")',
-            [req.user.id, rfcCliente, monto, cantidad, tipo, descripcion]
+            'INSERT INTO facturas (user_id, rfcCliente, monto, cantidad, tipo, descripcion, estado) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [user_id, rfcCliente, monto, cantidad, tipo, descripcion, 'Borrador']
         );
-        res.status(201).json({ id: result.insertId, mensaje: 'Factura creada en Borrador' });
-    } catch (error) { next(error); }
+        res.status(201).json({ mensaje: 'Factura creada', id: result.insertId });
+    } catch (error) {
+        next(error);
+    }
 };
 
 exports.obtenerFacturas = async (req, res, next) => {
@@ -16,9 +20,38 @@ exports.obtenerFacturas = async (req, res, next) => {
         const limite = parseInt(req.query.limit) || 10;
         const pagina = parseInt(req.query.page) || 1;
         const offset = (pagina - 1) * limite;
-        
-        const [rows] = await pool.query('SELECT * FROM facturas LIMIT ? OFFSET ?', [limite, offset]);
-        res.json({ pagina, limite, datos: rows });
+        const { estado, rfc } = req.query; // Capturamos los filtros
+
+        let query = 'SELECT * FROM facturas WHERE 1=1';
+        let countQuery = 'SELECT COUNT(*) as total FROM facturas WHERE 1=1';
+        const params = [];
+
+        if (estado && estado !== 'Todas') {
+            query += ' AND estado = ?';
+            countQuery += ' AND estado = ?';
+            params.push(estado);
+        }
+
+        if (rfc) {
+            query += ' AND rfcCliente LIKE ?';
+            countQuery += ' AND rfcCliente LIKE ?';
+            params.push(`%${rfc}%`); // Búsqueda parcial
+        }
+
+        query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+        const queryParams = [...params, limite, offset];
+
+        const [rows] = await pool.query(query, queryParams);
+        const [countRows] = await pool.query(countQuery, params);
+        const total = countRows[0].total;
+
+        res.json({
+            pagina,
+            limite,
+            total,
+            totalPaginas: Math.ceil(total / limite),
+            datos: rows
+        });
     } catch (error) { next(error); }
 };
 
@@ -50,8 +83,9 @@ exports.cambiarEstado = async (req, res, next) => {
         if (rol === 'user' && !['Borrador', 'Emitida'].includes(nuevoEstado)) {
             return res.status(403).json({ mensaje: 'Los usuarios solo pueden cambiar a Borrador o Emitida.' });
         }
-        if (rol === 'admin' && nuevoEstado !== 'Cancelada') {
-            return res.status(403).json({ mensaje: 'El administrador utiliza esta ruta para Cancelar facturas.' });
+
+        if (rol === 'admin' && !['Cancelada', 'Emitida'].includes(nuevoEstado)) {
+            return res.status(403).json({ mensaje: 'El administrador solo puede cambiar a Emitida o Cancelada.' });
         }
 
         const [result] = await pool.query('UPDATE facturas SET estado = ? WHERE id = ?', [nuevoEstado, req.params.id]);

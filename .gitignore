@@ -1,4 +1,13 @@
-node_modules
-package_lock.json
-package.json
+# Dependencias
+node_modules/
+
+# Archivos de entorno (¡Súper importante para la seguridad!)
+.env
+
+# Archivos del sistema operativo
 .DS_Store
+Thumbs.db
+
+# Carpetas de los IDEs
+.idea/
+.vscode/

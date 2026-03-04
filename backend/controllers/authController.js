@@ -3,21 +3,24 @@ const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 exports.registrarUsuario = async (req, res, next) => {
-    const { email, password, rol } = req.body;
+    const { email, password } = req.body;
+
     try {
         const [existente] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
         if (existente.length > 0) return res.status(400).json({ mensaje: 'El usuario ya existe' });
 
         const salt = await bcryptjs.genSalt(10);
         const passHasheada = await bcryptjs.hash(password, salt);
-        const rolAsignado = rol === 'admin' ? 'admin' : 'user';
 
         const [result] = await pool.query(
             'INSERT INTO usuarios (email, password, rol) VALUES (?, ?, ?)',
-            [email, passHasheada, rolAsignado]
+            [email, passHasheada, 'user']
         );
+
         res.status(201).json({ mensaje: 'Usuario registrado', id: result.insertId });
-    } catch (error) { next(error); }
+    } catch (error) {
+        next(error);
+    }
 };
 
 exports.autenticarUsuario = async (req, res, next) => {
