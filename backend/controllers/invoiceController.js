@@ -2,12 +2,19 @@ const pool = require('../config/db');
 
 exports.obtenerFacturas = async (req, res, next) => {
     try {
+<<<<<<< HEAD
         const empresa_id = req.user.empresa_id;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
         const offset = (page - 1) * limit;
         const estado = req.query.estado || 'Todas';
         const search = req.query.search || '';
+=======
+        const limite = parseInt(req.query.limit) || 10;
+        const pagina = parseInt(req.query.page) || 1;
+        const offset = (pagina - 1) * limite;
+        const { estado, rfc } = req.query; 
+>>>>>>> 5f91839973e0139193a4a8306167e39f341d9ce5
 
         let query = `
             SELECT f.*, c.rfc AS rfcCliente, c.razon_social AS razonSocialCliente,
@@ -35,11 +42,18 @@ exports.obtenerFacturas = async (req, res, next) => {
             countParams.push(estado);
         }
 
+<<<<<<< HEAD
         if (search) {
             query += ` AND c.rfc LIKE ?`;
             countQuery += ` AND c.rfc LIKE ?`;
             params.push(`%${search}%`);
             countParams.push(`%${search}%`);
+=======
+        if (rfc) {
+            query += ' AND rfcCliente LIKE ?';
+            countQuery += ' AND rfcCliente LIKE ?';
+            params.push(`%${rfc}%`); 
+>>>>>>> 5f91839973e0139193a4a8306167e39f341d9ce5
         }
 
         query += ` GROUP BY f.id`;
