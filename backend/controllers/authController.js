@@ -2,41 +2,107 @@ const pool = require('../config/db');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-exports.registrarUsuario = async (req, res, next) => {
-    const { email, password } = req.body;
-
+// 1. REGISTRO DE LA EMPRESA
+exports.registrarEmpresa = async (req, res, next) => {
+    const { rfc, nombre, password } = req.body;
     try {
-        const [existente] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-        if (existente.length > 0) return res.status(400).json({ mensaje: 'El usuario ya existe' });
+        const [existente] = await pool.query('SELECT * FROM empresas WHERE rfc = ?', [rfc]);
+        if (existente.length > 0) return res.status(400).json({ mensaje: 'Esta empresa ya está registrada' });
 
         const salt = await bcryptjs.genSalt(10);
         const passHasheada = await bcryptjs.hash(password, salt);
 
         const [result] = await pool.query(
-            'INSERT INTO usuarios (email, password, rol) VALUES (?, ?, ?)',
-            [email, passHasheada, 'user']
+            'INSERT INTO empresas (rfc, nombre, password) VALUES (?, ?, ?)',
+            [rfc, nombre, passHasheada]
         );
 
-        res.status(201).json({ mensaje: 'Usuario registrado', id: result.insertId });
-    } catch (error) {
-        next(error);
-    }
+        // Generamos un token temporal para que la empresa recién creada pueda registrar a su primer usuario
+        const tokenEmpresa = jwt.sign(
+            { empresaAuth: { id: result.insertId, rfc } },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(201).json({ mensaje: 'Empresa creada con éxito', tokenEmpresa });
+    } catch (error) { next(error); }
 };
 
-exports.autenticarUsuario = async (req, res, next) => {
-    const { email, password } = req.body;
+// 2. REGISTRO DE USUARIOS (Empleados / Administradores)
+exports.registrarUsuario = async (req, res, next) => {
+    const { email, password, nombre_completo, puesto, rolSeleccionado } = req.body;
+
+    // El ID de la empresa viene del token (ya sea el temporal de la empresa, o de un Admin logueado agregando a su equipo)
+    const empresa_id = req.empresaAuth ? req.empresaAuth.id : req.user.empresa_id;
+
+    if (!empresa_id) return res.status(403).json({ mensaje: 'No hay contexto de empresa para registrar este usuario' });
+
     try {
-        const [usuarios] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-        if (usuarios.length === 0) return res.status(400).json({ mensaje: 'Credenciales incorrectas' });
+        const [existente] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+        if (existente.length > 0) return res.status(400).json({ mensaje: 'El correo ya está en uso' });
 
-        const user = usuarios[0];
-        const passCorrecto = await bcryptjs.compare(password, user.password);
-        if (!passCorrecto) return res.status(400).json({ mensaje: 'Credenciales incorrectas' });
+        // Verificamos cuántos usuarios tiene esta empresa
+        const [usuariosEmpresa] = await pool.query('SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?', [empresa_id]);
+        const esPrimero = usuariosEmpresa[0].total === 0;
 
-        const payload = { user: { id: user.id, rol: user.rol } };
-        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' }, (error, token) => {
-            if (error) throw error;
-            res.json({ token, usuario: { email: user.email, rol: user.rol } });
+        let rolFinal = 'user';
+
+        if (esPrimero) {
+            // El primer usuario siempre DEBE ser administrador para no perder el control de la empresa
+            rolFinal = 'admin';
+        } else {
+            // Si no es el primero, solo un Admin puede nombrar a otro Admin
+            if (req.user && req.user.rol === 'admin' && rolSeleccionado === 'admin') {
+                rolFinal = 'admin';
+            }
+        }
+
+        const salt = await bcryptjs.genSalt(10);
+        const passHasheada = await bcryptjs.hash(password, salt);
+
+        await pool.query(
+            'INSERT INTO usuarios (empresa_id, email, password, nombre_completo, puesto, rol) VALUES (?, ?, ?, ?, ?, ?)',
+            [empresa_id, email, passHasheada, nombre_completo, puesto, rolFinal]
+        );
+
+        res.status(201).json({ mensaje: 'Usuario registrado exitosamente', rolAsignado: rolFinal });
+    } catch (error) { next(error); }
+};
+
+// 3. LOGIN DE USUARIOS (Con validación de RFC de Empresa)
+exports.loginUsuario = async (req, res, next) => {
+    // AHORA RECIBIMOS EL RFC TAMBIÉN
+    const { rfc, email, password } = req.body;
+    try {
+        const [usuarios] = await pool.query(`
+            SELECT u.*, e.nombre as nombre_empresa, e.rfc as rfc_empresa
+            FROM usuarios u
+            JOIN empresas e ON u.empresa_id = e.id
+            WHERE u.email = ? AND e.rfc = ?
+        `, [email, rfc]); // Validamos correo y RFC de su empresa
+
+        if (usuarios.length === 0) return res.status(400).json({ mensaje: 'Credenciales o RFC incorrectos' });
+
+        const usuario = usuarios[0];
+        const passCorrecta = await bcryptjs.compare(password, usuario.password);
+        if (!passCorrecta) return res.status(400).json({ mensaje: 'Credenciales o RFC incorrectos' });
+
+        const token = jwt.sign(
+            { user: { id: usuario.id, empresa_id: usuario.empresa_id, rol: usuario.rol, nombre: usuario.nombre_completo } },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+
+        res.json({
+            token,
+            usuario: {
+                id: usuario.id,
+                nombre: usuario.nombre_completo,
+                puesto: usuario.puesto,
+                rol: usuario.rol,
+                empresa_id: usuario.empresa_id,
+                empresa_nombre: usuario.nombre_empresa
+            }
         });
     } catch (error) { next(error); }
 };

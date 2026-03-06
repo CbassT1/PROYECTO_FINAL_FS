@@ -1,23 +1,28 @@
 const jwt = require('jsonwebtoken');
 
-const verificarToken = (req, res, next) => {
-    const token = req.header('Authorization')?.split(' ')[1];
-    if (!token) return res.status(401).json({ mensaje: 'No hay token, permiso denegado' });
+exports.verificarToken = (req, res, next) => {
+    const authHeader = req.header('Authorization');
+    if (!authHeader) return res.status(401).json({ mensaje: 'No hay token, permiso denegado' });
+
+    const token = authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ mensaje: 'Formato de token inválido' });
 
     try {
-        const cifrado = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = cifrado.user; // Guarda el ID y el ROL del usuario
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Identificamos qué tipo de sesión es
+        if (decoded.user) req.user = decoded.user;                 // Token de Empleado/Admin
+        if (decoded.empresaAuth) req.empresaAuth = decoded.empresaAuth; // Token temporal de Empresa
+
         next();
     } catch (error) {
-        res.status(401).json({ mensaje: 'Token no válido' });
+        res.status(401).json({ mensaje: 'Token no válido o expirado' });
     }
 };
 
-const esAdmin = (req, res, next) => {
-    if (req.user.rol !== 'admin') {
-        return res.status(403).json({ mensaje: 'Acceso denegado. Solo administradores.' });
+exports.esAdmin = (req, res, next) => {
+    if (!req.user || req.user.rol !== 'admin') {
+        return res.status(403).json({ mensaje: 'Acceso denegado: Solo administradores' });
     }
     next();
 };
-
-module.exports = { verificarToken, esAdmin };

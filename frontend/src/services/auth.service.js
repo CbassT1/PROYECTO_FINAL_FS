@@ -1,39 +1,36 @@
 import api from './api';
+import axios from 'axios'; // <-- NUEVA IMPORTACIÓN
 
 const authService = {
-    // Conecta con exports.autenticarUsuario
-    login: async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
-
-        // Tu backend devuelve { token, usuario: { email, rol } }
+    login: async (rfc, email, password) => {
+        const response = await api.post('/auth/login', { rfc, email, password });
         if (response.data.token) {
-            // Guardamos el token y los datos del usuario en el navegador
             localStorage.setItem('token', response.data.token);
-            localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
+            localStorage.setItem('user', JSON.stringify(response.data.usuario));
         }
         return response.data;
     },
 
-    // Conecta con exports.registrarUsuario
-    register: async (email, password) => {
-        // Ya solo mandamos email y password
-        const response = await api.post('/auth/register', { email, password });
+    registerEmpresa: async (rfc, nombre, password) => {
+        const response = await api.post('/auth/empresa/register', { rfc, nombre, password });
         return response.data;
     },
-    // Función extra para cerrar sesión limpiando el almacenamiento
+
+    registerUsuario: async (datosUsuario, tokenTemporal) => {
+        // USAMOS AXIOS PURO PARA EVITAR QUE EL INTERCEPTOR APLASTE NUESTRO TOKEN
+        const response = await axios.post('http://localhost:3000/api/auth/register', datosUsuario, {
+            headers: { Authorization: `Bearer ${tokenTemporal}` }
+        });
+        return response.data;
+    },
+
     logout: () => {
         localStorage.removeItem('token');
-        localStorage.removeItem('usuario');
+        localStorage.removeItem('user');
     },
 
-    // Función extra para saber qué usuario está logueado y su rol
-    getCurrentUser: () => {
-        const usuarioStr = localStorage.getItem('usuario');
-        if (usuarioStr) {
-            return JSON.parse(usuarioStr);
-        }
-        return null;
-    }
+    getCurrentUser: () => JSON.parse(localStorage.getItem('user')),
+    getToken: () => localStorage.getItem('token')
 };
 
 export default authService;

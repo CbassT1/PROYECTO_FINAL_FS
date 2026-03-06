@@ -83,13 +83,6 @@ const Dashboard = () => {
 
     return (
         <div className="dashboard-container">
-            <header className="dashboard-header">
-                <div className="dashboard-title">
-                    <h1>Gestión de Facturas</h1>
-                    <p>Conectado como: <strong>{user?.email}</strong> <span className="role-badge">{user?.rol?.toUpperCase()}</span></p>
-                </div>
-                <button onClick={handleLogout} className="btn-logout">Cerrar Sesión</button>
-            </header>
 
             {/* SECCIÓN DE FILTROS */}
             <div className="dashboard-actions" style={{ justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '15px', borderRadius: '10px', marginBottom: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>

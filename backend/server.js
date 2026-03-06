@@ -11,6 +11,8 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/facturas', require('./routes/invoice.routes'));
 
+app.get('/hola', (req, res) => res.json({ mensaje: '¡El servidor principal se actualizó!' }));
+
 // Middleware GLOBAL de errores
 app.use((err, req, res, next) => {
     console.error("Error del servidor:", err.message);

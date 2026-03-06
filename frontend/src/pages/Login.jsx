@@ -4,6 +4,7 @@ import authService from '../services/auth.service';
 import './Auth.css';
 
 const Login = () => {
+    const [rfc, setRfc] = useState(''); // NUEVO ESTADO
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -13,7 +14,8 @@ const Login = () => {
         e.preventDefault();
         setError('');
         try {
-            await authService.login(email, password);
+            // Pasamos el RFC al servicio
+            await authService.login(rfc, email, password);
             navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.mensaje || 'Credenciales inválidas');
@@ -23,15 +25,19 @@ const Login = () => {
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <h2 className="auth-title">Bienvenido</h2>
-                <p className="auth-subtitle">Ingresa tus credenciales para continuar</p>
+                <h2 className="auth-title">InvoTech</h2>
+                <p className="auth-subtitle">Ingresa a tu entorno de trabajo</p>
 
                 {error && <div className="error-tag">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
+                        <label>RFC de la Empresa</label>
+                        <input type="text" placeholder="XAXX010101000" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} required />
+                    </div>
+                    <div className="form-group">
                         <label>Correo Electrónico</label>
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                        <input type="email" placeholder="tu@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                     <div className="form-group">
                         <label>Contraseña</label>
@@ -41,7 +47,7 @@ const Login = () => {
                 </form>
 
                 <div className="auth-footer">
-                    ¿No tienes cuenta? <Link to="/register" className="auth-link">Regístrate aquí</Link>
+                    ¿Tu empresa es nueva? <Link to="/register" className="auth-link">Regístrala aquí</Link>
                 </div>
             </div>
         </div>
