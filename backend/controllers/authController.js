@@ -17,7 +17,6 @@ exports.registrarEmpresa = async (req, res, next) => {
             [rfc, nombre, passHasheada]
         );
 
-        // Generamos un token temporal para que la empresa recién creada pueda registrar a su primer usuario
         const tokenEmpresa = jwt.sign(
             { empresaAuth: { id: result.insertId, rfc } },
             process.env.JWT_SECRET,
@@ -32,7 +31,6 @@ exports.registrarEmpresa = async (req, res, next) => {
 exports.registrarUsuario = async (req, res, next) => {
     const { email, password, nombre_completo, puesto, rolSeleccionado } = req.body;
 
-    // El ID de la empresa viene del token (ya sea el temporal de la empresa, o de un Admin logueado agregando a su equipo)
     const empresa_id = req.empresaAuth ? req.empresaAuth.id : req.user.empresa_id;
 
     if (!empresa_id) return res.status(403).json({ mensaje: 'No hay contexto de empresa para registrar este usuario' });
@@ -41,17 +39,15 @@ exports.registrarUsuario = async (req, res, next) => {
         const [existente] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
         if (existente.length > 0) return res.status(400).json({ mensaje: 'El correo ya está en uso' });
 
-        // Verificamos cuántos usuarios tiene esta empresa
         const [usuariosEmpresa] = await pool.query('SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?', [empresa_id]);
         const esPrimero = usuariosEmpresa[0].total === 0;
 
         let rolFinal = 'user';
 
         if (esPrimero) {
-            // El primer usuario siempre DEBE ser administrador para no perder el control de la empresa
             rolFinal = 'admin';
         } else {
-            // Si no es el primero, solo un Admin puede nombrar a otro Admin
+
             if (req.user && req.user.rol === 'admin' && rolSeleccionado === 'admin') {
                 rolFinal = 'admin';
             }
@@ -71,7 +67,6 @@ exports.registrarUsuario = async (req, res, next) => {
 
 // 3. LOGIN DE USUARIOS (Con validación de RFC de Empresa)
 exports.loginUsuario = async (req, res, next) => {
-    // AHORA RECIBIMOS EL RFC TAMBIÉN
     const { rfc, email, password } = req.body;
     try {
         const [usuarios] = await pool.query(`
@@ -79,7 +74,7 @@ exports.loginUsuario = async (req, res, next) => {
             FROM usuarios u
             JOIN empresas e ON u.empresa_id = e.id
             WHERE u.email = ? AND e.rfc = ?
-        `, [email, rfc]); // Validamos correo y RFC de su empresa
+        `, [email, rfc]);
 
         if (usuarios.length === 0) return res.status(400).json({ mensaje: 'Credenciales o RFC incorrectos' });
 
@@ -90,7 +85,7 @@ exports.loginUsuario = async (req, res, next) => {
         const token = jwt.sign(
             { user: { id: usuario.id, empresa_id: usuario.empresa_id, rol: usuario.rol, nombre: usuario.nombre_completo } },
             process.env.JWT_SECRET,
-            { expiresIn: '8h' }
+            { expiresIn: '1h' }
         );
 
         res.json({

@@ -10,6 +10,9 @@ app.use(express.json());
 // Importar rutas
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/facturas', require('./routes/invoice.routes'));
+app.use('/api/catalogos', require('./routes/catalogo.routes'));
+app.use('/api/equipo', require('./routes/equipo.routes'));
+app.use('/api/empresa', require('./routes/empresa.routes'));
 
 app.get('/hola', (req, res) => res.json({ mensaje: '¡El servidor principal se actualizó!' }));
 

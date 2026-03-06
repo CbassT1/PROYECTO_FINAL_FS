@@ -1,0 +1,75 @@
+/* =========================================
+   ESTRUCTURA GENERAL
+========================================= */
+.factura-container { max-width: 1000px; margin: 0 auto; padding-bottom: 50px; }
+.page-title { color: #0f172a; margin-bottom: 1.5rem; }
+.seccion-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.seccion-card.bg-gray { background: #f8fafc; }
+.seccion-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
+.seccion-card h3 { margin: 0; color: #334155; font-size: 1.1rem; }
+
+/* =========================================
+   FORMULARIOS Y GRIDS
+========================================= */
+.grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.grid-3-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 0.8rem; color: #64748b; margin-bottom: 5px; font-weight: 600; }
+.req { color: #ef4444; }
+.form-group input, .form-group select, .form-group textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: inherit; }
+.form-group input:disabled { background-color: #f1f5f9; cursor: not-allowed; }
+
+/* =========================================
+   BOTONES MODERNOS (SaaS)
+========================================= */
+.btn-primary, .btn-outline, .btn-success, .btn-delete-small, .btn-edit-small { 
+    font-family: 'Inter', sans-serif; font-size: 0.9rem; transition: all 0.2s ease-in-out; 
+    display: inline-flex; align-items: center; justify-content: center; 
+}
+.btn-primary { background: #0ea5e9; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2); }
+.btn-primary:hover { background: #0284c7; transform: translateY(-1px); }
+
+.btn-outline { background: transparent; border: 1.5px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-outline:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+
+.btn-success { background: #10b981; color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-size: 1.05rem; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.25); }
+.btn-success:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 6px 8px -1px rgba(16, 185, 129, 0.3); }
+
+.btn-delete-small { background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-weight: 600; }
+.btn-delete-small:hover { background: #fca5a5; color: #b91c1c; }
+
+.btn-edit-small { background: #e0f2fe; color: #0284c7; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-weight: 600; }
+.btn-edit-small:hover { background: #bae6fd; color: #0369a1; }
+
+/* =========================================
+   TABLA DE CONCEPTOS
+========================================= */
+.tabla-conceptos-container { background: white; border-radius: 8px; padding: 1rem; border: 1px solid #e2e8f0; }
+.tabla-conceptos { width: 100%; border-collapse: collapse; }
+.tabla-conceptos th { text-align: left; padding: 10px; background: #f1f5f9; font-size: 0.85rem; color: #475569; }
+.tabla-conceptos td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+.totales-factura { text-align: right; margin-top: 1rem; padding-top: 1rem; border-top: 2px dashed #e2e8f0; }
+.totales-factura p { margin: 5px 0; color: #64748b; }
+.total-final { color: #0f172a; font-size: 1.5rem; margin-top: 10px; }
+.footer-factura { display: flex; justify-content: flex-end; margin-top: 20px; }
+
+/* =========================================
+   COMPONENTES ESPECIALES
+========================================= */
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(2px); }
+.modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+/* Inputs con formato */
+.input-currency { position: relative; display: flex; align-items: center; }
+.input-currency span { position: absolute; left: 12px; color: #64748b; font-weight: 600; }
+.input-currency input { width: 100%; padding-left: 25px !important; }
+.auto-textarea { resize: none; overflow: hidden; min-height: 42px; }
+input[list] { cursor: pointer; }
+
+/* Buscador Dinámico */
+.custom-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; list-style: none; padding: 0; margin: 0; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+.custom-dropdown li { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #475569; transition: background 0.2s; }
+.custom-dropdown li:last-child { border-bottom: none; }
+.custom-dropdown li:hover { background-color: #f0f9ff; color: #0284c7; }
+.custom-dropdown li strong { color: #0f172a; }

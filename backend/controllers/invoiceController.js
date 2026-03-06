@@ -1,103 +1,142 @@
 const pool = require('../config/db');
 
-exports.crearFactura = async (req, res, next) => {
-    const { rfcCliente, monto, cantidad, tipo, descripcion } = req.body;
-    const user_id = req.user.id;
-
-    try {
-        const [result] = await pool.query(
-            'INSERT INTO facturas (user_id, rfcCliente, monto, cantidad, tipo, descripcion, estado) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [user_id, rfcCliente, monto, cantidad, tipo, descripcion, 'Borrador']
-        );
-        res.status(201).json({ mensaje: 'Factura creada', id: result.insertId });
-    } catch (error) {
-        next(error);
-    }
-};
-
 exports.obtenerFacturas = async (req, res, next) => {
     try {
-        const limite = parseInt(req.query.limit) || 10;
-        const pagina = parseInt(req.query.page) || 1;
-        const offset = (pagina - 1) * limite;
-        const { estado, rfc } = req.query; // Capturamos los filtros
+        const empresa_id = req.user.empresa_id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const offset = (page - 1) * limit;
+        const estado = req.query.estado || 'Todas';
+        const search = req.query.search || '';
 
-        let query = 'SELECT * FROM facturas WHERE 1=1';
-        let countQuery = 'SELECT COUNT(*) as total FROM facturas WHERE 1=1';
-        const params = [];
+        let query = `
+            SELECT f.*, c.rfc AS rfcCliente, c.razon_social AS razonSocialCliente,
+                   IFNULL(SUM(p.monto_pagado), 0) AS total_pagado
+            FROM facturas f
+            JOIN clientes c ON f.cliente_id = c.id
+            LEFT JOIN pagos p ON f.id = p.factura_id
+            WHERE f.empresa_id = ?
+        `;
 
-        if (estado && estado !== 'Todas') {
-            query += ' AND estado = ?';
-            countQuery += ' AND estado = ?';
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM facturas f
+            JOIN clientes c ON f.cliente_id = c.id
+            WHERE f.empresa_id = ?
+        `;
+
+        let params = [empresa_id];
+        let countParams = [empresa_id];
+
+        if (estado !== 'Todas') {
+            query += ` AND f.estado = ?`;
+            countQuery += ` AND f.estado = ?`;
             params.push(estado);
+            countParams.push(estado);
         }
 
-        if (rfc) {
-            query += ' AND rfcCliente LIKE ?';
-            countQuery += ' AND rfcCliente LIKE ?';
-            params.push(`%${rfc}%`); // Búsqueda parcial
+        if (search) {
+            query += ` AND c.rfc LIKE ?`;
+            countQuery += ` AND c.rfc LIKE ?`;
+            params.push(`%${search}%`);
+            countParams.push(`%${search}%`);
         }
 
-        query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-        const queryParams = [...params, limite, offset];
+        query += ` GROUP BY f.id`;
+        query += ` ORDER BY f.fecha DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
 
-        const [rows] = await pool.query(query, queryParams);
-        const [countRows] = await pool.query(countQuery, params);
-        const total = countRows[0].total;
+        const [facturas] = await pool.query(query, params);
+        const [totalRows] = await pool.query(countQuery, countParams);
+        const totalPaginas = Math.ceil(totalRows[0].total / limit);
+
+        const facturasFormateadas = facturas.map(f => ({
+            ...f,
+            metodoPago: f.metodo_pago,
+            formaPago: f.forma_pago,
+            conceptos: typeof f.conceptos === 'string' ? JSON.parse(f.conceptos) : f.conceptos
+        }));
 
         res.json({
-            pagina,
-            limite,
-            total,
-            totalPaginas: Math.ceil(total / limite),
-            datos: rows
+            datos: facturasFormateadas,
+            totalPaginas,
+            paginaActual: page
         });
     } catch (error) { next(error); }
 };
 
 exports.obtenerFacturaPorId = async (req, res, next) => {
+    // Pendiente para cuando hagamos la descarga en PDF
+    res.json({ mensaje: "En construcción" });
+};
+
+exports.cambiarEstado = async (req, res, next) => {
+    const { id } = req.params;
+    const { estado } = req.body;
     try {
-        const [rows] = await pool.query('SELECT * FROM facturas WHERE id = ?', [req.params.id]);
-        if (rows.length === 0) return res.status(404).json({ mensaje: 'Factura no encontrada' });
-        res.json(rows[0]);
+        await pool.query('UPDATE facturas SET estado = ? WHERE id = ?', [estado, id]);
+        res.json({ mensaje: 'Estado actualizado' });
     } catch (error) { next(error); }
 };
 
 exports.actualizarFactura = async (req, res, next) => {
+    const { id } = req.params;
+    const { cliente_rfc, moneda, metodoPago, formaPago, monto, conceptos } = req.body;
+    const empresa_id = req.user.empresa_id;
+
     try {
-        const { rfcCliente, monto, cantidad, tipo, descripcion } = req.body;
-        const [result] = await pool.query(
-            'UPDATE facturas SET rfcCliente = ?, monto = ?, cantidad = ?, tipo = ?, descripcion = ? WHERE id = ?',
-            [rfcCliente, monto, cantidad, tipo, descripcion, req.params.id]
+        // Buscamos el ID del cliente basado en el RFC que nos manda React
+        const [clienteDb] = await pool.query('SELECT id FROM clientes WHERE rfc = ? AND empresa_id = ?', [cliente_rfc, empresa_id]);
+        if (clienteDb.length === 0) return res.status(400).json({ mensaje: 'El cliente no está registrado' });
+
+        const cliente_id = clienteDb[0].id;
+
+        // Actualizamos la factura
+        await pool.query(
+            `UPDATE facturas
+             SET cliente_id = ?, moneda = ?, metodo_pago = ?, forma_pago = ?, monto = ?, conceptos = ?
+             WHERE id = ? AND empresa_id = ? AND estado = 'Borrador'`,
+            [cliente_id, moneda, metodoPago, formaPago, monto, JSON.stringify(conceptos), id, empresa_id]
         );
-        if (result.affectedRows === 0) return res.status(404).json({ mensaje: 'Factura no encontrada' });
-        res.json({ mensaje: 'Factura actualizada por el administrador' });
-    } catch (error) { next(error); }
-};
 
-exports.cambiarEstado = async (req, res, next) => {
-    try {
-        const { nuevoEstado } = req.body;
-        const rol = req.user.rol;
-
-        if (rol === 'user' && !['Borrador', 'Emitida'].includes(nuevoEstado)) {
-            return res.status(403).json({ mensaje: 'Los usuarios solo pueden cambiar a Borrador o Emitida.' });
-        }
-
-        if (rol === 'admin' && !['Cancelada', 'Emitida'].includes(nuevoEstado)) {
-            return res.status(403).json({ mensaje: 'El administrador solo puede cambiar a Emitida o Cancelada.' });
-        }
-
-        const [result] = await pool.query('UPDATE facturas SET estado = ? WHERE id = ?', [nuevoEstado, req.params.id]);
-        if (result.affectedRows === 0) return res.status(404).json({ mensaje: 'Factura no encontrada' });
-        res.json({ mensaje: `Estado actualizado a ${nuevoEstado}` });
+        res.json({ mensaje: 'Borrador actualizado exitosamente' });
     } catch (error) { next(error); }
 };
 
 exports.eliminarFactura = async (req, res, next) => {
+    const { id } = req.params;
     try {
-        const [result] = await pool.query('DELETE FROM facturas WHERE id = ?', [req.params.id]);
-        if (result.affectedRows === 0) return res.status(404).json({ mensaje: 'Factura no encontrada' });
-        res.json({ mensaje: 'Factura eliminada permanentemente' });
+        await pool.query('DELETE FROM facturas WHERE id = ?', [id]);
+        res.json({ mensaje: 'Borrador eliminado' });
+    } catch (error) { next(error); }
+};
+
+// REGISTRAR UN ABONO A FACTURA PPD
+exports.agregarPago = async (req, res, next) => {
+    const { id } = req.params; // ID de la factura
+    const { monto_pagado, forma_pago } = req.body;
+    const empresa_id = req.user.empresa_id;
+
+    try {
+        // 1. Validamos que la factura exista y sea de esta empresa
+        const [factura] = await pool.query('SELECT monto, estado FROM facturas WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        if (factura.length === 0) return res.status(404).json({ mensaje: 'Factura no encontrada' });
+
+        // 2. Calculamos cuánto se ha pagado hasta ahora
+        const [pagosPrevios] = await pool.query('SELECT SUM(monto_pagado) as total FROM pagos WHERE factura_id = ?', [id]);
+        const totalPagado = parseFloat(pagosPrevios[0].total || 0) + parseFloat(monto_pagado);
+
+        // 3. Bloqueamos si intentan cobrar de más
+        if (totalPagado > parseFloat(factura[0].monto)) {
+            return res.status(400).json({ mensaje: 'El abono supera el saldo pendiente de esta factura.' });
+        }
+
+        // 4. Guardamos el abono
+        await pool.query(
+            'INSERT INTO pagos (factura_id, monto_pagado, forma_pago) VALUES (?, ?, ?)',
+            [id, monto_pagado, forma_pago]
+        );
+
+        res.json({ mensaje: 'Abono registrado correctamente' });
     } catch (error) { next(error); }
 };

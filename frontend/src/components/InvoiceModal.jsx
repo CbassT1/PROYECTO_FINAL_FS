@@ -74,7 +74,6 @@ const InvoiceModal = ({ isOpen, onClose, onRefresh, facturaEditando }) => {
         };
 
         try {
-            // NUEVO: Si existe facturaEditando hacemos PUT, si no hacemos POST
             if (facturaEditando) {
                 await facturasService.actualizar(facturaEditando.id, datosParaEnvio);
             } else {

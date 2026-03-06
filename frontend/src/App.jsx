@@ -1,10 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard'; // Tu pantalla actual de gestión
-import Inicio from './pages/Inicio'; // La nueva gráfica
+import Dashboard from './pages/Dashboard';
+import Inicio from './pages/Inicio';
 import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout'; // NUEVO
+import Layout from './components/Layout';
+import CrearFactura from './pages/CrearFactura';
+import Equipo from './pages/Equipo';
+import Empresa from './pages/Empresa';
 
 function App() {
   return (
@@ -21,9 +24,9 @@ function App() {
             <Route path="facturas" element={<Dashboard />} />
 
             {/* Vistas futuras vacías por ahora para que no rompa el menú */}
-            <Route path="crear-factura" element={<h2 style={{textAlign: 'center', marginTop:'50px'}}>Próximamente: Motor de Facturación</h2>} />
-            <Route path="equipo" element={<h2 style={{textAlign: 'center', marginTop:'50px'}}>Próximamente: Gestión de Equipo</h2>} />
-            <Route path="empresa" element={<h2 style={{textAlign: 'center', marginTop:'50px'}}>Próximamente: Configuración de Empresa</h2>} />
+            <Route path="crear-factura" element={<CrearFactura />} />
+            <Route path="equipo" element={<Equipo />} />
+            <Route path="empresa" element={<Empresa />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

@@ -1,22 +1,82 @@
-CREATE DATABASE IF NOT EXISTS sistema_facturas;
-USE sistema_facturas;
+DROP DATABASE IF EXISTS invotech_db;
+CREATE DATABASE invotech_db;
+USE invotech_db;
 
-CREATE TABLE usuarios (
+-- 1. Tabla principal: EMPRESAS
+CREATE TABLE empresas (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    rfc VARCHAR(13) UNIQUE NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    rol ENUM('admin', 'user') DEFAULT 'user'
+    logo_url VARCHAR(255),
+    certificado_cer VARCHAR(255), -- Para los sellos digitales
+    llave_key VARCHAR(255),       -- Para los sellos digitales
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 2. Tabla de USUARIOS (Vinculada a una empresa)
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    nombre_completo VARCHAR(255) NOT NULL,
+    puesto VARCHAR(100),
+    rol ENUM('admin', 'user') DEFAULT 'user',
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
+-- 3. Tabla de CLIENTES (El catálogo de receptores de la empresa)
+CREATE TABLE clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT NOT NULL,
+    rfc VARCHAR(13) NOT NULL,
+    razon_social VARCHAR(255) NOT NULL,
+    regimen_fiscal VARCHAR(100) NOT NULL,
+    direccion TEXT,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
+-- 4. Tabla de FACTURAS (La estructura robusta)
 CREATE TABLE facturas (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    rfcCliente VARCHAR(100) NOT NULL,
-    monto DECIMAL(10, 2) NOT NULL,
-    cantidad INT NOT NULL,
-    tipo ENUM('Producto', 'Servicio') NOT NULL,
-    descripcion TEXT NOT NULL,
+    empresa_id INT NOT NULL,
+    usuario_id INT NOT NULL, -- Quien elaboró la factura
+    cliente_id INT NOT NULL, -- A quién se le factura
+    moneda VARCHAR(10) DEFAULT 'MXN',
+    metodo_pago VARCHAR(50) NOT NULL,
+    forma_pago VARCHAR(100) NOT NULL,
+    monto DECIMAL(15, 2) NOT NULL, -- Total con IVA
     estado ENUM('Borrador', 'Emitida', 'Cancelada') DEFAULT 'Borrador',
+    conceptos JSON NOT NULL, -- Array complejo con claves SAT, unidad, cantidad, etc.
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+-- Tabla para Claves de Producto/Servicio (Aprox 52,000 registros)
+CREATE TABLE catalogo_claves (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    clave VARCHAR(20) NOT NULL UNIQUE,
+    descripcion TEXT NOT NULL
+);
+
+-- Tabla para Unidades de Medida (Aprox 2,500 registros)
+CREATE TABLE catalogo_unidades (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    clave VARCHAR(10) NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL
+);
+
+USE invotech_db;
+
+CREATE TABLE pagos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    factura_id INT NOT NULL,
+    monto_pagado DECIMAL(10,2) NOT NULL,
+    fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
+    forma_pago VARCHAR(50),
+    FOREIGN KEY (factura_id) REFERENCES facturas(id) ON DELETE CASCADE
 );
